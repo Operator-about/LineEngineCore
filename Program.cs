@@ -133,15 +133,28 @@ class MainSettingsEngine
 //Импорт
 class Import
 {
-    public float[] _Vert =
+
+    float[] _Vert =
     {
-            -0.5f, -0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            0.5f, 0.5f, 0.0f,
-    };
+        -0.5f, -0.5f, -0.5f, 1.0f,
+        0.5f, -0.5f, -0.5f, 1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f,
+        -0.5f, 0.5f, -0.5f, 1.0f,
+        -0.5f, 0.5f, 0.5f, 1.0f,
+        -0.5f, -0.5f, 0.5f, 1.0f,
+        0.5f, -0.5f, 0.5f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f,
+    };  
+
+
+    
 
     public void ImportModel(int _VBO, int _VAO)
     {
+        var _Сontext = new AssimpContext();
+        //Импорт
+        //var _Scene = _Сontext.ImportFile(_File, PostProcessSteps.Triangulate);
+
         
 
         _VBO = GL.GenBuffer();
@@ -154,6 +167,8 @@ class Import
 
         GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, 3*sizeof(float), 0);
         GL.EnableVertexAttribArray(0);
+
+        GL.ClearColor(Color4.Black);
     }
 
    
