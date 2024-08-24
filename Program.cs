@@ -54,14 +54,14 @@ class MainSettingsEngine
     
     private void _Window_Load()
     {
-        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
+        _Shader.UseAndIntilisation("Shader\\VertShader.glsl", "Shader\\FragShader.glsl");
         _Shader.Use();
 
         _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
 
 
         _Import = new Import();
-        _Import.ImportModel("D:\\HightLine\\3D\\Ditales\\Tree.fbx");
+        _Import.ImportModel("You model");
         GL.ClearColor(Color4.CornflowerBlue);
     }
    
