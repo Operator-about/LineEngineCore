@@ -27,6 +27,8 @@ class MainSettingsEngine
     private ShaderSystem _Shader = new ShaderSystem();
     private Camera _Camera;
     private Import _Import;
+
+    public List<float> _Vert = new List<float>();
     private int _VBO;
     private int _VAO;
 
@@ -58,7 +60,7 @@ class MainSettingsEngine
 
 
         _Import = new Import();
-        _Import.ImportModel(_VBO, _VAO);
+        _Import.ImportModel("Твоя модель/You model");
         GL.ClearColor(Color4.CornflowerBlue);
     }
    
@@ -70,14 +72,14 @@ class MainSettingsEngine
         float _ApsRat = 800f / 600f; 
 
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
+        
 
         _Shader.SetMatrix4("view", _Camera.GetView());
         _Shader.SetMatrix4("projection", _Camera.GetProjection(_ApsRat));
 
         Matrix4 _Model = Matrix4.Identity;
         _Shader.SetMatrix4("model", _Model);
-        _Shader.Use();
+        _Import.Draw(_Shader);
         GL.BindVertexArray(_VAO);
         GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, 3);
 
@@ -134,26 +136,46 @@ class MainSettingsEngine
 class Import
 {
 
-    float[] _Vert =
-    {
-        -0.5f, -0.5f, -0.5f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f,
-    };  
 
-
+    private List<float> _Vert = new List<float>();
+    private int _VAO;
+    private int _VBO;
     
 
-    public void ImportModel(int _VBO, int _VAO)
+    public void ImportModel(string _File)
     {
-        var _Сontext = new AssimpContext();
-        //Импорт
-        //var _Scene = _Сontext.ImportFile(_File, PostProcessSteps.Triangulate);
+        var _Import = new AssimpContext();
+        var _Scene = _Import.ImportFile(_File, PostProcessSteps.Triangulate | PostProcessSteps.FlipUVs);
+
+        foreach (var _Mesh in _Scene.Meshes)
+        {
+            for (int i = 0; i < _Mesh.VertexCount; i++)
+            {
+                _Vert.Add(_Mesh.Vertices[i].X);
+                _Vert.Add(_Mesh.Vertices[i].Y);
+                _Vert.Add(_Mesh.Vertices[i].Z);
+
+                if (_Mesh.HasNormals)
+                {
+                    _Vert.Add(_Mesh.Normals[i].X);
+                    _Vert.Add(_Mesh.Normals[i].Y);
+                    _Vert.Add(_Mesh.Normals[i].Z);
+                }
+
+                if (_Mesh.HasTextureCoords(0))
+                {
+                    _Vert.Add(_Mesh.TextureCoordinateChannels[0][i].X);
+                    _Vert.Add(_Mesh.TextureCoordinateChannels[0][i].Y);
+                }
+                else
+                {
+                    _Vert.Add(0.0f);
+                    _Vert.Add(0.0f);
+                }
+            }
+        }
+       
+        
 
         
 
@@ -163,12 +185,27 @@ class Import
         GL.BindVertexArray(_VAO);
 
         GL.BindBuffer(BufferTarget.ArrayBuffer, _VBO);        
-        GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Length * sizeof(float), _Vert, BufferUsageHint.StaticDraw);
+        GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Count * sizeof(float), _Vert.ToArray(), BufferUsageHint.StaticDraw);
 
-        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, 3*sizeof(float), 0);
+        int _Ride = 8 * sizeof(float);
+
+        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, _Ride, 0);
         GL.EnableVertexAttribArray(0);
 
+        GL.VertexAttribPointer(1,3,VertexAttribPointerType.Float, false, _Ride, 3*sizeof(float));
+        GL.EnableVertexAttribArray(1);
+
+
+        GL.VertexAttribPointer(2,2, VertexAttribPointerType.Float, false, _Ride, 6*sizeof(float));
+        GL.EnableVertexAttribArray(2);
         GL.ClearColor(Color4.Black);
+    }
+
+    public void Draw(ShaderSystem _Shader)
+    {
+        _Shader.Use();
+        GL.BindVertexArray(_VAO);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /8);
     }
 
    
@@ -214,6 +251,7 @@ class ShaderSystem()
 
     private void CheckAllSystem(int _Shader, bool _CheckShader, bool _CheckLink)
     {
+        
         var _Error = GL.GetError();
         if (_Error != OpenTK.Graphics.OpenGL4.ErrorCode.NoError)
         {
