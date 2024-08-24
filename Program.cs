@@ -53,14 +53,14 @@ class MainSettingsEngine
     
     private void _Window_Load()
     {
-        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
+        _Shader.UseAndIntilisation("Shader\\VertShader.glsl", "Shader\\FragShader.glsl");
         _Shader.Use();
 
         _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
 
 
         _Import = new Import();
-        _Import.ImportModel("Твоя модель/You model");
+        _Import.ImportModel("You model");
         GL.ClearColor(Color4.CornflowerBlue);
     }
    
@@ -205,7 +205,7 @@ class Import
     {
         _Shader.Use();
         GL.BindVertexArray(_VAO);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /8);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /3);
     }
 
    
