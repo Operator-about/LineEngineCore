@@ -11,6 +11,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.ComponentModel;
 
 
+
 /*
 Движок ещё в разработке!
 Он не готов
@@ -53,14 +54,14 @@ class MainSettingsEngine
     
     private void _Window_Load()
     {
-        _Shader.UseAndIntilisation("Shader\\VertShader.glsl", "Shader\\FragShader.glsl");
+        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
         _Shader.Use();
 
         _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
 
 
         _Import = new Import();
-        _Import.ImportModel("You model");
+        _Import.ImportModel("D:\\HightLine\\3D\\Ditales\\Tree.fbx");
         GL.ClearColor(Color4.CornflowerBlue);
     }
    
@@ -72,7 +73,18 @@ class MainSettingsEngine
         float _ApsRat = 800f / 600f; 
 
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        
+
+
+        Vector3 _LightPos = new Vector3(1.2f,1.0f,2.0f);
+        Vector3 _ViewPos = _Camera._Position;
+
+        //Настройки света
+        _Shader.Use();
+        _Shader.SetVector3("lightPos", _LightPos);
+        _Shader.SetVector3("viewPos", _ViewPos);
+        _Shader.SetVector3("lightColor", new Vector3(1.0f, 1.0f, 1.0f));
+        _Shader.SetVector3("objectColor", new Vector3(1.0f,0.5f,0.3f));
+        //Конец настройки света
 
         _Shader.SetMatrix4("view", _Camera.GetView());
         _Shader.SetMatrix4("projection", _Camera.GetProjection(_ApsRat));
@@ -138,10 +150,11 @@ class Import
 
 
     private List<float> _Vert = new List<float>();
+    private List<int> _Textures = new List<int>();   
     private int _VAO;
     private int _VBO;
     
-
+    //Импорт модели
     public void ImportModel(string _File)
     {
         var _Import = new AssimpContext();
@@ -172,12 +185,19 @@ class Import
                     _Vert.Add(0.0f);
                     _Vert.Add(0.0f);
                 }
-            }
-        }
-       
-        
 
-        
+                //Проверка на имение текстуры
+                var _Material = _Scene.Materials[_Mesh.MaterialIndex];
+                if (_Material.HasTextureDiffuse)
+                {
+                    var _TextureFile = _Material.TextureDiffuse.FilePath;
+                    var _Texture = LoadTexture(_TextureFile);
+                    _Textures.Add(_Texture);
+                }
+            }
+
+            
+        }     
 
         _VBO = GL.GenBuffer();
         _VAO = GL.GenVertexArray();
@@ -201,11 +221,44 @@ class Import
         GL.ClearColor(Color4.Black);
     }
 
+    //Загрузка текстур
+    private int LoadTexture(string _Path)
+    {
+        int _TextHandle = GL.GenTexture();
+        GL.BindTexture(TextureTarget.Texture2D, _TextHandle);
+
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)All.Repeat);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.Repeat);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.LinearMipmapLinear);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.Linear);
+
+        int _Width = 1024;
+        int _Height = 1024;
+        byte[] _Pixels = new byte[_Width * _Height];
+
+        GL.TexImage2D(TextureTarget.Texture2D,0,PixelInternalFormat.Rgba, _Width, _Height, 0,PixelFormat.Rgba, PixelType.UnsignedByte, _Pixels);
+
+        GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+
+        return _TextHandle;
+    }
+
     public void Draw(ShaderSystem _Shader)
     {
         _Shader.Use();
+
+        //Загрузка шейдеров
+        for (int i = 0; i<_Textures.Count; i++)
+        {
+            GL.ActiveTexture(TextureUnit.Texture0 + i);
+            GL.BindTexture(TextureTarget.Texture2D, _Textures[i]);
+
+            GL.ActiveTexture(TextureUnit.Texture1);
+            GL.BindTexture(TextureTarget.Texture2D, _Textures[i]);
+            _Shader.SetInt($"texture{i}", i);
+        }
         GL.BindVertexArray(_VAO);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /3);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /8);
     }
 
    
@@ -247,6 +300,36 @@ class ShaderSystem()
     public void Use()
     {
         GL.UseProgram(_Hand);
+    }
+
+    public void SetInt(string _Name, int _Value)
+    {
+        int _Location = GL.GetUniformLocation(_Hand, _Name);
+        if (_Location == -1)
+        {
+            Console.WriteLine($"Предупреждение! {_Name} не найдено в шейдере!");
+        }
+        GL.Uniform1(_Location, _Value);
+    }
+
+    public void SetFloat(string _Name, float _Value)
+    {
+        int _Location = GL.GetUniformLocation(_Hand, _Name);
+        if(_Location == -1)
+        {
+            Console.WriteLine($"Предупреждение!{_Name}");
+        }
+        GL.Uniform1(_Location, _Value);
+    }
+
+    public void SetVector3(string _Name, Vector3 _Value)
+    {
+        int _Location = GL.GetUniformLocation(_Hand, _Name);
+        if (_Location == -1)
+        {
+            throw new Exception(_Name);
+        }
+        GL.Uniform3(_Location, _Value);
     }
 
     private void CheckAllSystem(int _Shader, bool _CheckShader, bool _CheckLink)
