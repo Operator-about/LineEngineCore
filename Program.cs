@@ -24,6 +24,7 @@ class MainSettingsEngine
 {
     public GameWindow _Window;
     public NativeWindowSettings _WindowSettings;
+    public GameWindowSettings _GameSettings;
 
     private ShaderSystem _Shader = new ShaderSystem();
     private Camera _Camera;
@@ -41,8 +42,16 @@ class MainSettingsEngine
             Title = "LineEngine"
         };
 
-        _Window = new GameWindow(GameWindowSettings.Default, _WindowSettings);
+        _GameSettings = new GameWindowSettings()
+        {
 
+            UpdateFrequency = 1000
+
+        };
+
+
+        _Window = new GameWindow(_GameSettings, _WindowSettings);
+       
         _Window.Unload += _Window_Unload;
         _Window.Load += _Window_Load;
         _Window.RenderFrame += _Window_RenderFrame;
@@ -57,6 +66,9 @@ class MainSettingsEngine
         _Shader.UseAndIntilisation("Shader\\VertShader.glsl", "Shader\\FragShader.glsl");
         _Shader.Use();
 
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(CullFaceMode.Back);
+
         _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
 
 
@@ -70,10 +82,12 @@ class MainSettingsEngine
     private void _Window_RenderFrame(FrameEventArgs obj)
     {
 
-        float _ApsRat = 800f / 600f; 
+        float _ApsRat = _Window.Size.X / (float)_Window.Size.Y;
+
 
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(CullFaceMode.Back);
 
         Vector3 _LightPos = new Vector3(1.2f,1.0f,2.0f);
         Vector3 _ViewPos = _Camera._Position;
@@ -95,7 +109,7 @@ class MainSettingsEngine
         GL.BindVertexArray(_VAO);
         GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, 3);
 
-
+        GL.Disable(EnableCap.CullFace);
         _Window.SwapBuffers();
     }
 
@@ -150,9 +164,12 @@ class Import
 
 
     private List<float> _Vert = new List<float>();
-    private List<int> _Textures = new List<int>();   
+    private List<float> _Textures = new List<float>();  
+    private List<float> _Normals = new List<float>();
     private int _VAO;
     private int _VBO;
+    private int _VBON;
+    private int _VBOTC;
     
     //Импорт модели
     public void ImportModel(string _File)
@@ -162,64 +179,102 @@ class Import
 
         foreach (var _Mesh in _Scene.Meshes)
         {
-            for (int i = 0; i < _Mesh.VertexCount; i++)
+            //Координаты
+            foreach (var _Vertex in _Mesh.Vertices)
             {
-                _Vert.Add(_Mesh.Vertices[i].X);
-                _Vert.Add(_Mesh.Vertices[i].Y);
-                _Vert.Add(_Mesh.Vertices[i].Z);
+                _Vert.Add(_Vertex.X);
+                _Vert.Add(_Vertex.Y);
+                _Vert.Add(_Vertex.Z);
+            }
 
-                if (_Mesh.HasNormals)
-                {
-                    _Vert.Add(_Mesh.Normals[i].X);
-                    _Vert.Add(_Mesh.Normals[i].Y);
-                    _Vert.Add(_Mesh.Normals[i].Z);
-                }
+            //Нормали
+            foreach (var _Normal in _Mesh.Normals)
+            {
+                _Normals.Add(_Normal.X);
+                _Normals.Add(_Normal.Y);
+                _Normals.Add(_Normal.Z);
+            }
 
-                if (_Mesh.HasTextureCoords(0))
-                {
-                    _Vert.Add(_Mesh.TextureCoordinateChannels[0][i].X);
-                    _Vert.Add(_Mesh.TextureCoordinateChannels[0][i].Y);
-                }
-                else
-                {
-                    _Vert.Add(0.0f);
-                    _Vert.Add(0.0f);
-                }
-
-                //Проверка на имение текстуры
-                var _Material = _Scene.Materials[_Mesh.MaterialIndex];
-                if (_Material.HasTextureDiffuse)
-                {
-                    var _TextureFile = _Material.TextureDiffuse.FilePath;
-                    var _Texture = LoadTexture(_TextureFile);
-                    _Textures.Add(_Texture);
-                }
+            //Координаты текстур
+            foreach (var _TextureCoord in _Mesh.TextureCoordinateChannels[0])
+            {
+                _Textures.Add(_TextureCoord.X);
+                _Textures.Add(_TextureCoord.Y);
             }
 
             
-        }     
 
+            //Проверка на имение текстуры
+            var _Material = _Scene.Materials[_Mesh.MaterialIndex];
+            if (_Material.HasTextureDiffuse)
+            {
+                var _TextureFile = _Material.TextureDiffuse.FilePath;
+                var _Texture = LoadTexture(_TextureFile);
+                _Textures.Add(_Texture);
+            }
+
+        }
+
+        
+        foreach (var _Mesh in _Scene.Meshes)
+        {
+            foreach (Assimp.Vector3D _Vertex in _Mesh.Vertices)
+            {
+                Vector3 _ConVert = ConvertVecOpenTK(_Vertex);
+               _Vert.Add(_ConVert.X);
+               _Vert.Add(_ConVert.Y);
+               _Vert.Add(_ConVert.Z);
+            }
+        }
+
+        _VBON = GL.GenBuffer();
         _VBO = GL.GenBuffer();
+        _VBOTC = GL.GenBuffer();
         _VAO = GL.GenVertexArray();
 
         GL.BindVertexArray(_VAO);
 
         GL.BindBuffer(BufferTarget.ArrayBuffer, _VBO);        
         GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Count * sizeof(float), _Vert.ToArray(), BufferUsageHint.StaticDraw);
-
-        int _Ride = 8 * sizeof(float);
-
-        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, _Ride, 0);
+        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, 3*sizeof(float), 0);
         GL.EnableVertexAttribArray(0);
 
-        GL.VertexAttribPointer(1,3,VertexAttribPointerType.Float, false, _Ride, 3*sizeof(float));
+        if (_Normals.Count == 0)
+        {
+            Console.WriteLine("Нет нормалей!");
+        }
+
+        
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBON);
+        GL.BufferData(BufferTarget.ArrayBuffer, _Normals.Count * sizeof(float), _Normals.ToArray(), BufferUsageHint.StaticDraw);
+        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
         GL.EnableVertexAttribArray(1);
+        
+        
 
-
-        GL.VertexAttribPointer(2,2, VertexAttribPointerType.Float, false, _Ride, 6*sizeof(float));
+        
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBOTC);
+        GL.BufferData(BufferTarget.ArrayBuffer, _Textures.Count * sizeof(float), _Textures.ToArray(), BufferUsageHint.StaticDraw);
+        GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
         GL.EnableVertexAttribArray(2);
-        GL.ClearColor(Color4.Black);
+        
+
+        GL.BindVertexArray(0);
     }
+
+    //Конвертация векторов в вектор Assimp
+    private Assimp.Vector3D ConvertVecAssimp(Vector3 _Vec)
+    {
+        return new Assimp.Vector3D(_Vec.X, _Vec.Y, _Vec.Z);
+    }
+
+    //Конвертация в вектор OpenTK
+    private OpenTK.Mathematics.Vector3 ConvertVecOpenTK(Assimp.Vector3D _Vert)
+    {
+        
+        return new OpenTK.Mathematics.Vector3(_Vert.X, _Vert.Y, _Vert.Z);
+    }
+
 
     //Загрузка текстур
     private int LoadTexture(string _Path)
@@ -248,17 +303,10 @@ class Import
         _Shader.Use();
 
         //Загрузка шейдеров
-        for (int i = 0; i<_Textures.Count; i++)
-        {
-            GL.ActiveTexture(TextureUnit.Texture0 + i);
-            GL.BindTexture(TextureTarget.Texture2D, _Textures[i]);
-
-            GL.ActiveTexture(TextureUnit.Texture1);
-            GL.BindTexture(TextureTarget.Texture2D, _Textures[i]);
-            _Shader.SetInt($"texture{i}", i);
-        }
+        
         GL.BindVertexArray(_VAO);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /8);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /3);
+        GL.BindVertexArray(0);
     }
 
    
