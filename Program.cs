@@ -1,6 +1,7 @@
 ﻿using OpenTK;
 using Assimp;
 using System;
+using StbImageSharp;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -9,6 +10,8 @@ using System.Drawing;
 using OpenTK.Input;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 
 
 
@@ -30,9 +33,7 @@ class MainSettingsEngine
     private Camera _Camera;
     private Import _Import;
 
-    public List<float> _Vert = new List<float>();
-    private int _VBO;
-    private int _VAO;
+    
 
     public void Activation()
     {
@@ -73,7 +74,7 @@ class MainSettingsEngine
 
 
         _Import = new Import();
-        _Import.ImportModel("You model");
+        _Import.ImportModel("You model.fbx");
         GL.ClearColor(Color4.CornflowerBlue);
     }
    
@@ -86,14 +87,18 @@ class MainSettingsEngine
 
 
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        GL.Enable(EnableCap.CullFace);
-        GL.CullFace(CullFaceMode.Back);
+        
 
         Vector3 _LightPos = new Vector3(1.2f,1.0f,2.0f);
         Vector3 _ViewPos = _Camera._Position;
 
+        
         //Настройки света
         _Shader.Use();
+
+        
+
+
         _Shader.SetVector3("lightPos", _LightPos);
         _Shader.SetVector3("viewPos", _ViewPos);
         _Shader.SetVector3("lightColor", new Vector3(1.0f, 1.0f, 1.0f));
@@ -105,10 +110,11 @@ class MainSettingsEngine
 
         Matrix4 _Model = Matrix4.Identity;
         _Shader.SetMatrix4("model", _Model);
-        _Import.Draw(_Shader);
-        GL.BindVertexArray(_VAO);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, 3);
 
+
+        _Import.Draw(_Shader);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, 3);
+        GL.BindVertexArray(0);
         GL.Disable(EnableCap.CullFace);
         _Window.SwapBuffers();
     }
@@ -164,13 +170,13 @@ class Import
 
 
     private List<float> _Vert = new List<float>();
-    private List<float> _Textures = new List<float>();  
+    private List<float> _Textures = new List<float>();
     private List<float> _Normals = new List<float>();
     private int _VAO;
     private int _VBO;
     private int _VBON;
     private int _VBOTC;
-    
+
     //Импорт модели
     public void ImportModel(string _File)
     {
@@ -202,7 +208,7 @@ class Import
                 _Textures.Add(_TextureCoord.Y);
             }
 
-            
+
 
             //Проверка на имение текстуры
             var _Material = _Scene.Materials[_Mesh.MaterialIndex];
@@ -215,15 +221,15 @@ class Import
 
         }
 
-        
+
         foreach (var _Mesh in _Scene.Meshes)
         {
             foreach (Assimp.Vector3D _Vertex in _Mesh.Vertices)
             {
                 Vector3 _ConVert = ConvertVecOpenTK(_Vertex);
-               _Vert.Add(_ConVert.X);
-               _Vert.Add(_ConVert.Y);
-               _Vert.Add(_ConVert.Z);
+                _Vert.Add(_ConVert.X);
+                _Vert.Add(_ConVert.Y);
+                _Vert.Add(_ConVert.Z);
             }
         }
 
@@ -234,9 +240,9 @@ class Import
 
         GL.BindVertexArray(_VAO);
 
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBO);        
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBO);
         GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Count * sizeof(float), _Vert.ToArray(), BufferUsageHint.StaticDraw);
-        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, 3*sizeof(float), 0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
         GL.EnableVertexAttribArray(0);
 
         if (_Normals.Count == 0)
@@ -244,20 +250,20 @@ class Import
             Console.WriteLine("Нет нормалей!");
         }
 
-        
+
         GL.BindBuffer(BufferTarget.ArrayBuffer, _VBON);
         GL.BufferData(BufferTarget.ArrayBuffer, _Normals.Count * sizeof(float), _Normals.ToArray(), BufferUsageHint.StaticDraw);
         GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
         GL.EnableVertexAttribArray(1);
-        
-        
 
-        
+
+
+
         GL.BindBuffer(BufferTarget.ArrayBuffer, _VBOTC);
         GL.BufferData(BufferTarget.ArrayBuffer, _Textures.Count * sizeof(float), _Textures.ToArray(), BufferUsageHint.StaticDraw);
         GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
         GL.EnableVertexAttribArray(2);
-        
+
 
         GL.BindVertexArray(0);
     }
@@ -271,7 +277,7 @@ class Import
     //Конвертация в вектор OpenTK
     private OpenTK.Mathematics.Vector3 ConvertVecOpenTK(Assimp.Vector3D _Vert)
     {
-        
+
         return new OpenTK.Mathematics.Vector3(_Vert.X, _Vert.Y, _Vert.Z);
     }
 
@@ -291,7 +297,7 @@ class Import
         int _Height = 1024;
         byte[] _Pixels = new byte[_Width * _Height];
 
-        GL.TexImage2D(TextureTarget.Texture2D,0,PixelInternalFormat.Rgba, _Width, _Height, 0,PixelFormat.Rgba, PixelType.UnsignedByte, _Pixels);
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, _Width, _Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, _Pixels);
 
         GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
 
@@ -303,13 +309,13 @@ class Import
         _Shader.Use();
 
         //Загрузка шейдеров
-        
+
         GL.BindVertexArray(_VAO);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count /3);
+        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, _Vert.Count / 3);
         GL.BindVertexArray(0);
     }
 
-   
+
 }
 
 
