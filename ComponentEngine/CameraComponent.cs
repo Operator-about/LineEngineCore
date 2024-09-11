@@ -15,7 +15,7 @@ public class Camera
     public Vector3 _Front { get; private set; } = -Vector3.UnitZ;
     public Vector3 _Up { get; private set; } = Vector3.UnitY;
     public Vector3 _Right => Vector3.Normalize(Vector3.Cross(_Front, _Up));
-
+    public bool _Debugging;
 
 
     public float _Yaw = -90.0f;

@@ -1,7 +1,6 @@
 ﻿using OpenTK;
 using Assimp;
 using System;
-using StbImageSharp;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -11,6 +10,11 @@ using OpenTK.Input;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Microsoft.Win32;
+using System.ServiceModel.Syndication;
+using System.Threading;
+using System.Net.NetworkInformation;
+
 
 
 
@@ -32,8 +36,19 @@ class MainSettingsEngine
     private ShaderSystem _Shader = new ShaderSystem();
     private Camera _Camera;
     private Import _Import;
+    private bool _StatusImport = false;
+    private string _CommandStart = "~command add -";
+    public string _ErrorCode = "#0000";
+    private string _PathModel;
+    private bool _ActivImport;
+    private Vector3 _PositionLight;
+    private Vector3 _ColorLight;
+    private bool _CheckShaderImport = true;
 
-    
+
+
+
+
 
     public void Activation()
     {
@@ -46,7 +61,7 @@ class MainSettingsEngine
         _GameSettings = new GameWindowSettings()
         {
 
-            UpdateFrequency = 1000
+            UpdateFrequency = 60
 
         };
 
@@ -64,18 +79,50 @@ class MainSettingsEngine
     
     private void _Window_Load()
     {
-        _Shader.UseAndIntilisation("Shader\\VertShader.glsl", "Shader\\FragShader.glsl");
+        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
         _Shader.Use();
-
-        GL.Enable(EnableCap.CullFace);
-        GL.CullFace(CullFaceMode.Back);
-
         _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
+        _CheckShaderImport = false;
+        //if (_CheckShaderImport == true)
+        //{
+        //    try
+        //    {
+        //        _Shader.UseAndIntilisation("D:\\LineEngine\\Core\\LineEngineCore\\Shader\\VertShader.glsl", "D:\\LineEngine\\Core\\LineEngineCore\\Shader\\FragShader.glsl");
+        //        _Shader.Use();
+        //        GL.Enable(EnableCap.CullFace);
+        //        GL.CullFace(CullFaceMode.Back);
+        //        Console.WriteLine($"Shader import done, exit code:{_ErrorCode}");
+        //    }
+        //    catch
+        //    {
+        //        _ErrorCode = "#1111";
+        //        Console.WriteLine($"System Error Detected! Error Code:{_ErrorCode}");
+        //    }
+            
+
+        //    _Camera = new Camera(new Vector3(0.0f, 0.0f, 0.0f));
+        //    _CheckShaderImport = false;
+        //}
+
+
+
+
+
 
 
         _Import = new Import();
-        _Import.ImportModel("You model.fbx");
-        GL.ClearColor(Color4.CornflowerBlue);
+        _Import.ImportModel("D:\\3D\\OPERATOR.fbx");
+        //if (_ActivImport == true)
+        //{
+        //    _Import = new Import();
+        //    _Import.ImportModel(_PathModel);
+        //    Console.WriteLine(_PathModel);
+        //    _ActivImport = false;
+        //    Console.WriteLine("Import Done");
+        //}
+        
+
+        GL.ClearColor(Color4.DimGray);
     }
    
 
@@ -96,13 +143,15 @@ class MainSettingsEngine
         //Настройки света
         _Shader.Use();
 
+
         
 
-
-        _Shader.SetVector3("lightPos", _LightPos);
+        
         _Shader.SetVector3("viewPos", _ViewPos);
-        _Shader.SetVector3("lightColor", new Vector3(1.0f, 1.0f, 1.0f));
-        _Shader.SetVector3("objectColor", new Vector3(1.0f,0.5f,0.3f));
+        _Shader.Use();
+        _Shader.SetVector3("lightPos", _PositionLight);
+        _Shader.SetVector3("lightColor", new Vector3(_ColorLight));
+        _Shader.SetVector3("objectColor", new Vector3(1.0f, 0.5f, 0.3f));
         //Конец настройки света
 
         _Shader.SetMatrix4("view", _Camera.GetView());
@@ -112,10 +161,16 @@ class MainSettingsEngine
         _Shader.SetMatrix4("model", _Model);
 
 
+        if (_StatusImport == false)
+        {
+            _StatusImport = true;
+            Thread _A = new Thread(AddOrUse);
+            _A.Start();
+        }
+
+
         _Import.Draw(_Shader);
-        GL.DrawArrays(OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles, 0, 3);
-        GL.BindVertexArray(0);
-        GL.Disable(EnableCap.CullFace);
+        
         _Window.SwapBuffers();
     }
 
@@ -128,22 +183,35 @@ class MainSettingsEngine
         if (_Input.IsKeyDown(Keys.W))
         {
             _Camera._Position += _Camera._Front * _CameraSpeed;
-            Console.WriteLine($"Координаты(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            if (_Camera._Debugging == true)
+            {
+                Console.WriteLine($"Coordinate(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            }
         }
         if (_Input.IsKeyDown(Keys.S))
         {
             _Camera._Position -= _Camera._Front * _CameraSpeed;
-            Console.WriteLine($"Координаты(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            if (_Camera._Debugging == true)
+            {
+                Console.WriteLine($"Coordinate(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            }
         }
         if (_Input.IsKeyDown(Keys.A))
         {
             _Camera._Position -= _Camera._Front * _CameraSpeed;
-            Console.WriteLine($"Координаты(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            if (_Camera._Debugging == true)
+            {
+                Console.WriteLine($"Coordinate(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            }
         }
         if (_Input.IsKeyDown(Keys.D))
         {
             _Camera._Position += _Camera._Front * _CameraSpeed;
-            Console.WriteLine($"Координаты(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            if (_Camera._Debugging == true)
+            {
+                Console.WriteLine($"Coordinate(X){_Camera._Position.X} (Y){_Camera._Position.Y} (Z){_Camera._Position.Z}");
+            }
+
         }
 
         var _Mouse = _Window.MouseState;
@@ -156,13 +224,169 @@ class MainSettingsEngine
         _Camera.UpdateVector();
     }
 
+
+
+
     private void _Window_Unload()
     {
         
     }
 
-    
+  
+    //Добавление предметов(Доделать)
+    public void AddOrUse()
+    {
+        Console.Write(_CommandStart);
+        string _Mode = _CommandStart + Console.ReadLine();
+        string[] _AllCommands = new string[6] {$"{_CommandStart} Model",$"{_CommandStart} Light", $"{_CommandStart} Help", $"{_CommandStart} Get Camera Vector",$"{_CommandStart} Camera Debugging", $"{_CommandStart} Show FPS" };
+
+
+
+        _PositionLight = new Vector3();
+
+
+        //Импорт модели
+        if (_Mode == _AllCommands[0])
+        {
+            try
+            {
+                Console.Write("Pls, write path model her:");
+                _PathModel = Console.ReadLine()!;
+                _ActivImport = true;
+                _Window_Load();
+                Console.WriteLine("Success");               
+                _StatusImport = false;
+                
+
+            }
+            catch
+            {
+                _ErrorCode = "#0002";
+                Console.WriteLine($"System Error Detected! Error Code:{_ErrorCode}");
+                _StatusImport = false;
+                
+                
+            }
+
+        }
+
+        //Добавление света
+        else if (_Mode == _AllCommands[1])
+        {
+            try
+            {
+                Console.WriteLine("Pls, write you mode coordinate(if you want get camera coordinate for light pos. pls write command here):");
+                _Mode = Console.ReadLine()!;
+                if (_Mode == _AllCommands[3])
+                {
+                    _PositionLight = _Camera._Position;
+                    Console.WriteLine("Coordinate get done");
+                }
+                else
+                {
+                    Console.WriteLine("X:");
+                    int _X = Int32.Parse(Console.ReadLine());
+                    _PositionLight.X = _X;
+                    Console.WriteLine("Y:");
+                    int _Y = Int32.Parse(Console.ReadLine());
+                    _PositionLight.Y = _Y;
+                    Console.WriteLine("Z:");
+                    int _Z = Int32.Parse(Console.ReadLine());
+                    _PositionLight.Z = _Z;
+
+                }
+                
+
+
+            
+                Console.WriteLine("Pls, add light color:");
+                Console.WriteLine("R:");
+                int _R = Int32.Parse(Console.ReadLine()!);
+                
+                Console.WriteLine("G:");
+                int _G = Int32.Parse(Console.ReadLine()!);
+                
+                Console.WriteLine("B:");
+                int _B = Int32.Parse(Console.ReadLine()!);
+
+                _ColorLight = new Vector3(_R, _G, _B);
+
+
+                
+
+                Console.WriteLine("Success");
+                _StatusImport = false;
+            }
+            catch
+            {
+                _ErrorCode = "#0010";
+                Console.WriteLine($"System Error Detected! Error Code:{_ErrorCode}");
+                _StatusImport = false;
+            }
+        }
+
+        //Помощь
+        else if(_Mode == _AllCommands[2])
+        {
+            Console.WriteLine("Reminder! All commands start with: ~command add - " +
+                "After this, you can write everything that can be seen below: " +
+                " ~command add - Model " +
+                " ~command add - Light. " +
+                " ~command add - Get Camera Vector" +
+                " ~command add - Camera Debugging" +
+                " And you can use command: ~command add - Help for more information");
+
+            _StatusImport = false;
+
+
+        }
+        else if (_Mode == _AllCommands[3])
+        {
+            Console.WriteLine($"Camera coordinate: X:{_Camera._Position.X}. Y:{_Camera._Position.Y}. Z:{_Camera._Position.Z}");
+            _StatusImport = false;
+        }
+        else if (_Mode == _AllCommands[4])
+        {
+            if (_Camera._Debugging == true)
+            {
+                _Camera._Debugging = false;
+                Console.WriteLine("Debugging offline");
+                _StatusImport = false;
+            }
+            else
+            {
+                _Camera._Debugging = true;
+                Console.WriteLine("Debugging online");
+                _StatusImport = false;
+            }
+            
+        }
+        else if (_Mode == _AllCommands[5])
+        {
+            GetFPS(true);
+        }
+        else
+        {
+            _StatusImport = false;
+        }
+
+       
+        
+    }
+
+    private void GetFPS(bool _Activ)
+    {
+        /*
+        while (_Activ)
+        {
+            Task.Delay(1000000000);
+            Console.WriteLine(_GameSettings.UpdateFrequency);
+        }
+        */
+    }
 }
+
+
 
 //Импорт
 class Import
@@ -177,131 +401,45 @@ class Import
     private int _VBON;
     private int _VBOTC;
 
-    //Импорт модели
-    public void ImportModel(string _File)
+    public void ImportModel(string _Path)
     {
         var _Import = new AssimpContext();
-        var _Scene = _Import.ImportFile(_File, PostProcessSteps.Triangulate | PostProcessSteps.FlipUVs);
+        var _Scene = _Import.ImportFile(_Path, PostProcessPreset.TargetRealTimeMaximumQuality);
 
-        foreach (var _Mesh in _Scene.Meshes)
+        foreach (var _Mesh in _Scene.Materials)
         {
-            //Координаты
-            foreach (var _Vertex in _Mesh.Vertices)
-            {
-                _Vert.Add(_Vertex.X);
-                _Vert.Add(_Vertex.Y);
-                _Vert.Add(_Vertex.Z);
-            }
-
-            //Нормали
-            foreach (var _Normal in _Mesh.Normals)
-            {
-                _Normals.Add(_Normal.X);
-                _Normals.Add(_Normal.Y);
-                _Normals.Add(_Normal.Z);
-            }
-
-            //Координаты текстур
-            foreach (var _TextureCoord in _Mesh.TextureCoordinateChannels[0])
-            {
-                _Textures.Add(_TextureCoord.X);
-                _Textures.Add(_TextureCoord.Y);
-            }
-
-
-
-            //Проверка на имение текстуры
-            var _Material = _Scene.Materials[_Mesh.MaterialIndex];
-            if (_Material.HasTextureDiffuse)
-            {
-                var _TextureFile = _Material.TextureDiffuse.FilePath;
-                var _Texture = LoadTexture(_TextureFile);
-                _Textures.Add(_Texture);
-            }
 
         }
-
-
-        foreach (var _Mesh in _Scene.Meshes)
+        foreach (var _Material in _Scene.Materials)
         {
-            foreach (Assimp.Vector3D _Vertex in _Mesh.Vertices)
-            {
-                Vector3 _ConVert = ConvertVecOpenTK(_Vertex);
-                _Vert.Add(_ConVert.X);
-                _Vert.Add(_ConVert.Y);
-                _Vert.Add(_ConVert.Z);
-            }
-        }
 
-        _VBON = GL.GenBuffer();
-        _VBO = GL.GenBuffer();
-        _VBOTC = GL.GenBuffer();
+        }
+    }
+
+    private void LoadModel(Mesh _Mesh)
+    {
         _VAO = GL.GenVertexArray();
-
         GL.BindVertexArray(_VAO);
 
+        _VBO = GL.GenBuffer();
         GL.BindBuffer(BufferTarget.ArrayBuffer, _VBO);
-        GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Count * sizeof(float), _Vert.ToArray(), BufferUsageHint.StaticDraw);
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
-        GL.EnableVertexAttribArray(0);
 
-        if (_Normals.Count == 0)
+        foreach (var _Vertex in _Mesh.Vertices)
         {
-            Console.WriteLine("Нет нормалей!");
+            _Vert.Add(_Vertex.X);
+            _Vert.Add(_Vertex.Y);
+            _Vert.Add(_Vertex.Z);
+
+            if (_Mesh.HasTextureCoords(0))
+            {
+                _Vert.Add(_Mesh.TextureCoordinateChannels[0][_Vertex].X);
+                _Vert.Add(_Mesh.TextureCoordinateChannels[0][_Vertex].Y);
+            }
         }
 
+        GL.BufferData(BufferTarget.ArrayBuffer, _Vert.Count*sizeof(float), _Vert.ToArray(), BufferUsageHint.StaticDraw);
 
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBON);
-        GL.BufferData(BufferTarget.ArrayBuffer, _Normals.Count * sizeof(float), _Normals.ToArray(), BufferUsageHint.StaticDraw);
-        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
-        GL.EnableVertexAttribArray(1);
-
-
-
-
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _VBOTC);
-        GL.BufferData(BufferTarget.ArrayBuffer, _Textures.Count * sizeof(float), _Textures.ToArray(), BufferUsageHint.StaticDraw);
-        GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
-        GL.EnableVertexAttribArray(2);
-
-
-        GL.BindVertexArray(0);
-    }
-
-    //Конвертация векторов в вектор Assimp
-    private Assimp.Vector3D ConvertVecAssimp(Vector3 _Vec)
-    {
-        return new Assimp.Vector3D(_Vec.X, _Vec.Y, _Vec.Z);
-    }
-
-    //Конвертация в вектор OpenTK
-    private OpenTK.Mathematics.Vector3 ConvertVecOpenTK(Assimp.Vector3D _Vert)
-    {
-
-        return new OpenTK.Mathematics.Vector3(_Vert.X, _Vert.Y, _Vert.Z);
-    }
-
-
-    //Загрузка текстур
-    private int LoadTexture(string _Path)
-    {
-        int _TextHandle = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _TextHandle);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)All.Repeat);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.Repeat);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.LinearMipmapLinear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)All.Linear);
-
-        int _Width = 1024;
-        int _Height = 1024;
-        byte[] _Pixels = new byte[_Width * _Height];
-
-        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, _Width, _Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, _Pixels);
-
-        GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-
-        return _TextHandle;
+        GL.VertexAttribPointer(0,3,VertexAttribPointerType.Float, false, 5*sizeof(float), 0);
     }
 
     public void Draw(ShaderSystem _Shader)
@@ -319,10 +457,15 @@ class Import
 }
 
 
+
+
+
+
 //Шейдеры
 class ShaderSystem()
 {
     public int _Hand;
+    
 
     public void UseAndIntilisation(string _VertShaderPath, string _FragShaderPath)
     {
@@ -353,7 +496,15 @@ class ShaderSystem()
 
     public void Use()
     {
-        GL.UseProgram(_Hand);
+        try
+        {
+            GL.UseProgram(_Hand);
+        }
+        catch
+        {
+            Console.WriteLine($"System Error Detected! Error Code:#1111");
+        }
+        
     }
 
     public void SetInt(string _Name, int _Value)
@@ -429,10 +580,10 @@ class ShaderSystem()
 
 
 class Start()
-{
+{  
     static void Main()
     {
         MainSettingsEngine _Engine = new MainSettingsEngine();
-        _Engine.Activation();
+        _Engine.Activation();        
     }
 }
